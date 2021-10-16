@@ -18,6 +18,9 @@ from more_itertools import peekable
 class Line(DataClassJsonMixin):
     """A bit of text from the play"""
 
+    def as_rust(self) -> str:
+        return ""
+
 
 @dataclass(frozen=True)
 class Text(Line):
@@ -25,12 +28,19 @@ class Text(Line):
 
     text: str
 
+    def as_rust(self) -> str:
+        return f"Line::Text(\"{self.text}\")"
+
 
 @dataclass(frozen=True)
 class Direction(Line):
     """A stage direction, which will be formatted differently"""
 
     direction: str
+
+
+    def as_rust(self) -> str:
+        return f"Line::Direction(\"{self.direction}\")"
 
 
 @dataclass(frozen=True)
@@ -69,6 +79,15 @@ class Dialogue(TextBlock):
                 contents.append(Direction(line.text))
         return Dialogue(character, act, scene, start, end, contents)
 
+    def as_rust(self) -> str:
+        return f"Block::Dialogue(Dialogue {{character: \"{self.character}\"," \
+               f" act: {self.act}, scene: {self.scene}, " \
+               f"start: {self.start}, end: {self.end}, " \
+               f"lines: &[\n" + \
+               (" " * 6) + \
+                str.join(",\n" + (" " * 6), (line.as_rust() for line in self.lines)) + \
+               f"] }})"
+
     def to_dict(self, encode_json=False) -> Dict[str, Any]:
         return {"Dialogue": super().to_dict(encode_json=encode_json)}
 
@@ -78,13 +97,16 @@ class Heading(TextBlock):
     act: str
     scene: str
     setting: str
-    staging: Direction
+    staging: str
 
     @staticmethod
     def from_html(act: str, setting: Tag, staging: Tag) -> Heading:
         print(setting.text)
         [scene, setting] = setting.text.strip().split(".", 1)
         return Heading(act, scene.strip(), setting.strip(), staging.text.strip())
+
+    def as_rust(self) -> str:
+        return f"Block::Heading(Heading {{act: \"{self.act}\", scene: \"{self.scene}\", setting: \"{self.setting}\", staging: \"{self.staging}\" }})"
 
     def to_dict(self, encode_json=False) -> Dict[str, Any]:
         # return super().to_dict(encode_json=encode_json)
@@ -125,11 +147,22 @@ while lear.peek(None):
 
 scenes.append(current_scene)
 
-for (index, scene) in enumerate(scenes):
-    # use a 1-based index
-    index = index + 1
-    print(f"{index:02d}.json")
-    file = path.join(working_dir, "..", "src", "res", f"{index:02d}.json")
-    with open(file, "w", encoding="utf-8", newline="\n") as f:
-        data = [block.to_dict(encode_json=True) for block in scene]
-        json.dump(data, f, indent=4)
+with open(path.join(working_dir, "..", "src", "scenes.rs"), "w", encoding="utf-8", newline="\n") as mod:
+    mod.write(f"pub(crate) const ALL_SCENES: &[&[Block]] = &[\n")
+    for (index, scene) in enumerate(scenes):
+        # use a 1-based index
+        index = index + 1
+        print(f"{index:02d}.json")
+        file = path.join(working_dir, "..", "src", "res", f"{index:02d}.json")
+        with open(file, "w", encoding="utf-8", newline="\n") as f:
+            data = [block.to_dict(encode_json=True) for block in scene]
+            json.dump(data, f, indent=4)
+
+        mod.write("  &[\n")
+        for block in scene:
+            mod.write(" " * 4)
+            mod.write(block.as_rust())
+            mod.write(",\n")
+        mod.write("  ],\n")
+
+    mod.write("];\n")

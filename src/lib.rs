@@ -8,6 +8,8 @@ use rand::{prelude::ThreadRng, Rng};
 use serde::Deserialize;
 use termion::style;
 
+include!("scenes.rs");
+
 const SCENES: [&str; 26] = [
     include_str!("res/01.json"),
     include_str!("res/02.json"),
@@ -244,10 +246,10 @@ const TABLE_OF_CONTENTS: [TableEntry; 5] = [
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Heading {
-    act: String,
-    scene: String,
-    setting: String,
-    staging: String,
+    act: &'static str,
+    scene: &'static str,
+    setting: &'static str,
+    staging: &'static str,
 }
 
 #[derive(Debug)]
@@ -299,15 +301,15 @@ impl Display for &Heading {
 #[derive(Debug, Deserialize, Clone)]
 pub enum Line {
     #[serde(rename(deserialize = "text"))]
-    Text(String),
+    Text(&'static str),
     #[serde(rename(deserialize = "direction"))]
-    Direction(String),
+    Direction(&'static str),
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct Dialogue {
-    character: String,
-    lines: Vec<Line>,
+    character: &'static str,
+    lines: &'static [Line],
     act: usize,
     scene: usize,
     start: usize,
@@ -339,7 +341,7 @@ impl Dialogue {
         // compensate we just walk through the text line by line and count.
         let mut lines_text = 0;
         let mut lines_directions = 0;
-        for line in &self.lines {
+        for line in self.lines {
             match line {
                 Line::Text(_) => {
                     lines_text += 1;
