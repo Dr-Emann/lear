@@ -108,7 +108,8 @@ while lear.peek(None):
     tag: Tag = next(lear)
     # Scene indicators, we want to skip these
     if tag.name == "h3":
-        scenes.append(current_scene)
+        if current_scene:
+            scenes.append(current_scene)
         current_scene = []
         if tag.text.startswith("Act"):
             act = tag.text
@@ -125,8 +126,10 @@ while lear.peek(None):
 scenes.append(current_scene)
 
 for (index, scene) in enumerate(scenes):
+    # use a 1-based index
+    index = index + 1
     print(f"{index:02d}.json")
-    file = path.join(working_dir, "scenes", f"{index:02d}.json")
-    with open(file, "w", encoding="utf-8") as f:
+    file = path.join(working_dir, "..", "src", "res", f"{index:02d}.json")
+    with open(file, "w", encoding="utf-8", newline="\n") as f:
         data = [block.to_dict(encode_json=True) for block in scene]
         json.dump(data, f, indent=4)
