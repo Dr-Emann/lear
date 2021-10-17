@@ -1,6 +1,6 @@
 use std::{
     cmp::{max, min},
-    fmt::Display,
+    fmt::{Display, Write},
     ops::RangeInclusive,
 };
 
@@ -279,7 +279,7 @@ impl Display for LearError {
 
 impl std::error::Error for LearError {}
 
-impl Display for &Heading {
+impl Display for Heading {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -378,40 +378,27 @@ impl Dialogue {
 
 impl Display for &Dialogue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "{}{}{}\n",
-            style::Bold,
-            self.character,
-            style::Reset
-        ))?;
-        let iter = self.lines.iter().peekable();
+        write!(f, "{}{}{}\n", style::Bold, self.character, style::Reset)?;
         let mut prev = None;
-        // while let Some(line) = iter.next() {
-        for line in iter {
+        for line in &self.lines {
             if let Some(&Line::Direction(_)) = prev {
                 match line {
-                    Line::Text(text) => f.write_fmt(format_args!("\n\t{}\n", text))?,
-                    Line::Direction(direction) => f.write_fmt(format_args!(
-                        "\t{}{}{}\n",
-                        style::Italic,
-                        direction,
-                        style::Reset
-                    ))?,
+                    Line::Text(text) => write!(f, "\n\t{}\n", text)?,
+                    Line::Direction(direction) => {
+                        write!(f, "\t{}{}{}\n", style::Italic, direction, style::Reset)?
+                    }
                 };
             } else {
                 match line {
-                    Line::Text(text) => f.write_fmt(format_args!("\t{}\n", text))?,
-                    Line::Direction(direction) => f.write_fmt(format_args!(
-                        "\n\t{}{}{}\n",
-                        style::Italic,
-                        direction,
-                        style::Reset
-                    ))?,
+                    Line::Text(text) => write!(f, "\t{}\n", text)?,
+                    Line::Direction(direction) => {
+                        write!(f, "\n\t{}{}{}\n", style::Italic, direction, style::Reset)?
+                    }
                 };
             }
             prev = Some(line);
         }
-        f.write_fmt(format_args!("\n"))?;
+        f.write_char('\n')?;
         Ok(())
     }
 }
@@ -431,7 +418,7 @@ impl Block {
     }
 }
 
-impl Display for &Block {
+impl Display for Block {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Block::Heading(heading) => write!(f, "{}", heading),
