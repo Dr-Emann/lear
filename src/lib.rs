@@ -316,25 +316,25 @@ pub struct Dialogue {
 }
 
 impl Dialogue {
-    fn selection(&self, range: &RangeInclusive<usize>) -> Option<Dialogue> {
+    fn selection(self, range: RangeInclusive<usize>) -> Option<Dialogue> {
         // no overlap
         if self.start > *range.end() || self.end < *range.start() {
             return None;
         }
         // complete overlap
         if *range.start() <= self.start && self.end <= *range.end() {
-            return Some(self.clone());
+            return Some(self);
         }
         // the line numbers from the selection
-        let start_line = max(range.start(), &self.start);
-        let end_line = min(range.end(), &self.end);
+        let start_line = max(*range.start(), self.start);
+        let end_line = min(*range.end(), self.end);
         // the start and end indexes in self.lines
         let (start, _) = self
             .lines
             .iter()
             .enumerate()
             .filter(|(_, line)| matches!(line, Line::Text(_)))
-            .find(|(i, _)| i + self.start >= *start_line)?;
+            .find(|(i, _)| i + self.start >= start_line)?;
         // Things get a little weird when stage directions are at the end of a
         // block because they don't have line numbers associated with them. To
         // compensate we just walk through the text line by line and count.
@@ -344,7 +344,7 @@ impl Dialogue {
             match line {
                 Line::Text(_) => {
                     lines_text += 1;
-                    if lines_text + self.start >= *end_line {
+                    if lines_text + self.start >= end_line {
                         break;
                     }
                 }
@@ -361,18 +361,18 @@ impl Dialogue {
             return None;
         }
         // if we truncated a dialogue block, add leading and/or trailing ellipses
-        if range.start() > &self.start {
+        if *range.start() > self.start {
             lines.insert(0, Line::Text("...".into()));
         }
-        if range.end() < &self.end {
+        if *range.end() < self.end {
             lines.push(Line::Text("...".into()));
         }
         Some(Dialogue {
             lines,
-            start: *start_line,
-            end: *end_line,
+            start: start_line,
+            end: end_line,
             character: self.character.clone(),
-            ..*self
+            ..self
         })
     }
 }
@@ -411,7 +411,7 @@ pub enum Block {
 }
 
 impl Block {
-    fn selection(&self, range: &RangeInclusive<usize>) -> Option<Block> {
+    fn selection(self, range: RangeInclusive<usize>) -> Option<Block> {
         match self {
             Block::Heading(_) => None,
             Block::Dialogue(d) => Some(Block::Dialogue(d.selection(range)?)),
@@ -459,9 +459,8 @@ pub fn text(
         .ok_or(LearError::InvalidScene { act, scene })?;
     let blocks: Vec<Block> = serde_json::from_str(SCENES[scene_index])?;
     let blocks: Vec<Block> = blocks
-        // .get(lines.clone())
-        .iter()
-        .filter_map(|b| b.selection(&lines))
+        .into_iter()
+        .filter_map(|b| b.selection(lines.clone()))
         .collect();
     if blocks.is_empty() {
         return Err(LearError::InvalidLines { act, scene, lines });
