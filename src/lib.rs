@@ -4,6 +4,7 @@ use std::{
     ops::RangeInclusive,
 };
 
+use rand::seq::SliceRandom;
 use rand::{prelude::ThreadRng, Rng};
 use serde::Deserialize;
 use termion::style;
@@ -378,21 +379,21 @@ impl Dialogue {
 
 impl Display for &Dialogue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}{}\n", style::Bold, self.character, style::Reset)?;
+        writeln!(f, "{}{}{}", style::Bold, self.character, style::Reset)?;
         let mut prev = None;
         for line in &self.lines {
             if let Some(&Line::Direction(_)) = prev {
                 match line {
-                    Line::Text(text) => write!(f, "\n\t{}\n", text)?,
+                    Line::Text(text) => writeln!(f, "\n\t{}", text)?,
                     Line::Direction(direction) => {
-                        write!(f, "\t{}{}{}\n", style::Italic, direction, style::Reset)?
+                        writeln!(f, "\t{}{}{}", style::Italic, direction, style::Reset)?
                     }
                 };
             } else {
                 match line {
-                    Line::Text(text) => write!(f, "\t{}\n", text)?,
+                    Line::Text(text) => writeln!(f, "\t{}", text)?,
                     Line::Direction(direction) => {
-                        write!(f, "\n\t{}{}{}\n", style::Italic, direction, style::Reset)?
+                        writeln!(f, "\n\t{}{}{}", style::Italic, direction, style::Reset)?
                     }
                 };
             }
@@ -428,8 +429,8 @@ impl Display for Block {
 }
 
 pub fn blocks_to_show(rng: &mut ThreadRng) -> Result<Vec<Block>, std::io::Error> {
-    let scene = rng.gen_range(0..25) as usize;
-    let blocks: Vec<Block> = serde_json::from_str(SCENES[scene])?;
+    let scene = SCENES.choose(rng).expect("SCENES is non-empty");
+    let blocks: Vec<Block> = serde_json::from_str(scene)?;
     let blocks_to_show = rng.gen_range(2..=min(5, blocks.len())) as usize;
     // the fact that scene 8 is so short complicates things...
     let range = 0..(blocks.len() - blocks_to_show);
