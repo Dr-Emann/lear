@@ -386,10 +386,8 @@ impl Display for &Dialogue {
             self.character,
             style::Reset
         ))?;
-        let iter = self.lines.iter().peekable();
         let mut prev = None;
-        // while let Some(line) = iter.next() {
-        for line in iter {
+        for line in self.lines {
             if let Some(&Line::Direction(_)) = prev {
                 match line {
                     Line::Text(text) => f.write_fmt(format_args!("\n\t{}\n", text))?,
